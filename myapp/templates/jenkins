@@ -13,7 +13,7 @@ pipeline {
     stages {
         stage('Clone Git Repo') {
             steps {
-                git 'https://github.com/YourUsername/docker-spring-boot.git'
+                git 'https://github.com/Ravichandu-git/docker-sample-java-webapp.git'
             }
         }
 
