@@ -30,43 +30,33 @@ pipeline {
             }
         }
 
-        stage('Push Docker Image to ECR') {
-            steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'ECR_CREDENTIALS'
-                ]]) {
-                    sh """
-                    aws ecr get-login-password --region ap-south-1 | \
-                    docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                    docker push ${ECR_REPO}:${IMAGE_TAG}
-                    docker push ${ECR_REPO}:latest
-                    """
-                }
-            }
-        }
+stage('Push to ECR') { 
+    steps {
+    script {
+        sh """
+        aws ecr get-login-password --region ap-south-1 | \
+        docker login --username AWS --password-stdin ${REGISTRY} docker push ${IMAGE_NAME}
+        """
+}
+}
+}
+stage('Deploy to EKS using Helm') { 
+steps {
+script {
+sh """
+helm upgrade --install first ./mychart \
+--namespace helm-deployment \
+--create-namespace \
+--set image.repository=${REGISTRY} \
+--set image.tag=${IMAGE_TAG}
+"""
+}
+}
+}
+ 
+}
 
-        stage('Deploy to EKS using Helm') {
-            steps {
-                withCredentials([file(credentialsId: 'KUBECONFIG', variable: 'KUBECONFIG_FILE')]) {
-                    sh """
-                    export KUBECONFIG=${KUBECONFIG_FILE}
-                    helm upgrade --install ${APP_NAME} ${CHART_DIR} \
-                        --namespace ${KUBE_NAMESPACE} \
-                        --create-namespace \
-                        --set image.repository=${ECR_REPO} \
-                        --set image.tag=${IMAGE_TAG} \
-                        --wait --timeout 5m
-                    kubectl rollout status deployment/${APP_NAME} -n ${KUBE_NAMESPACE} --timeout=3m
-                    kubectl get pods -n ${KUBE_NAMESPACE} -o wide
-                    kubectl get svc -n ${KUBE_NAMESPACE}
-                    kubectl get ingress -n ${KUBE_NAMESPACE}
-                    """
-                }
-            }
-        }
-    }
-
+        
     post {
         success {
             echo "Deployment successful: ${APP_NAME}:${IMAGE_TAG}"
