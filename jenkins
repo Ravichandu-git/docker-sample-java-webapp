@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         APP_NAME = "myapp"
-        ECR_REGISTRY = "742710068961.dkr.ecr.ap-south-1.amazonaws.com"
+        ECR_REGISTRY = "742710068961.dkr.ecr.ap-south-1.amazonaws.com/helm"
         ECR_REPO = "${ECR_REGISTRY}/${APP_NAME}"
         IMAGE_TAG = "${BUILD_NUMBER}"
         KUBE_NAMESPACE = "helm-deployment"
