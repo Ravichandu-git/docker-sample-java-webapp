@@ -21,8 +21,17 @@ autoscaling:
     
 ingress:
   enabled: true
-  host: myapp.example.com
-  annotations:
-    kubernetes.io/ingress.class: nginx
-  path: /
-  tls: false
+  className: "nginx"
+  annotations: {}
+  hosts:
+    - host: "myapp.example.com"
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: myapp
+              port:
+                number: 80
+  tls: []
+
