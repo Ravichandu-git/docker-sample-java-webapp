@@ -33,7 +33,7 @@ public class DemoApplication {
     }
 
     @RestController
-    class GreetingController {
+    static class GreetingController {
 
         // Return HTML content now
         @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
