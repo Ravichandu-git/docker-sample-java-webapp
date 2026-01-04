@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: 742710068961.dkr.ecr.ap-south-1.amazonaws.com/helm-myapp
+  repository: 742710068961.dkr.ecr.ap-south-1.amazonaws.com/helm
   tag: "latest"
   pullPolicy: IfNotPresent
 
