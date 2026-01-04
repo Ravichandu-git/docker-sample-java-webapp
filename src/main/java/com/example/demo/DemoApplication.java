@@ -1,17 +1,15 @@
-// src/main/java/com/example/demo/DemoApplication.java
 package com.example.demo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.MediaType; // Import MediaType
-import org.springframework.http.ResponseEntity; // Import ResponseEntity
-import org.springframework.http.HttpHeaders; // Import HttpHeaders
-
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @SpringBootApplication
 public class DemoApplication {
@@ -35,39 +33,29 @@ public class DemoApplication {
     @RestController
     static class GreetingController {
 
-        // Return HTML content now
         @GetMapping(value = "/", produces = MediaType.TEXT_HTML_VALUE)
         public ResponseEntity<String> greet() {
             String htmlContent = generateHtmlPage(DemoApplication.specialMode);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.TEXT_HTML); // Ensure browser interprets as HTML
-            return ResponseEntity.ok().headers(headers).body(htmlContent);
+            return ResponseEntity.ok(htmlContent);
         }
 
-        // Helper method to generate the HTML page string
         private String generateHtmlPage(boolean isSpecialMode) {
-            String title;
-            String message;
-            String bodyBackgroundColor;
-            String messageColor;
-            String borderColor;
+            String title, message, bodyBg, messageColor, borderColor;
 
             if (isSpecialMode) {
                 title = "Special Mode Active!";
                 message = "Hello from the ✨ SPECIAL ✨ World!";
-                bodyBackgroundColor = "#e0f7fa"; // Light cyan background
-                messageColor = "#00796b"; // Teal text
-                borderColor = "#004d40"; // Darker teal border
+                bodyBg = "#e0f7fa";
+                messageColor = "#00796b";
+                borderColor = "#004d40";
             } else {
                 title = "Default Mode";
                 message = "Hello from the DEFAULT World!";
-                bodyBackgroundColor = "#fff3e0"; // Light orange background
-                messageColor = "#ef6c00"; // Orange text
-                borderColor = "#e65100"; // Darker orange border
+                bodyBg = "#fff3e0";
+                messageColor = "#ef6c00";
+                borderColor = "#e65100";
             }
 
-            // Construct the HTML string
-            // Using text blocks (requires Java 15+) for better readability
             return """
                    <!DOCTYPE html>
                    <html lang="en">
@@ -95,7 +83,7 @@ public class DemoApplication {
                            }
                            h1 {
                                color: %s;
-                               font-size: 2.5em; /* Larger font size */
+                               font-size: 2.5em;
                            }
                        </style>
                    </head>
@@ -105,13 +93,13 @@ public class DemoApplication {
                        </div>
                    </body>
                    </html>
-                   """.formatted(title, bodyBackgroundColor, borderColor, messageColor, message);
+                   """.formatted(title, bodyBg, borderColor, messageColor, message);
         }
 
-        // Keep the simple health check endpoint
         @GetMapping("/health")
-        public String healthCheck() {
-            return "{\"status\": \"UP\"}";
+        public Map<String, String> healthCheck() {
+            // Proper JSON response
+            return Map.of("status", "UP");
         }
     }
 }
