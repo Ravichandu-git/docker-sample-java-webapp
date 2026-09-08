@@ -3,13 +3,13 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION    = "ap-south-1"
-        ECR_REGISTRY  = "486517829811.dkr.ecr.ap-south-1.amazonaws.com"
-        IMAGE_NAME    = "mynewapp"
-        IMAGE_TAG     = "${BUILD_NUMBER}"
+        AWS_REGION     = "ap-south-1"
+        ECR_REGISTRY   = "486517829811.dkr.ecr.ap-south-1.amazonaws.com"
+        IMAGE_NAME     = "mynewapp"
+        IMAGE_TAG      = "${BUILD_NUMBER}"
 
-        EC2_USER      = "ec2-user"
-        EC2_HOST      = "13.233.137.199"
+        EC2_USER       = "ec2-user"
+        EC2_HOST       = "13.233.137.199"
         CONTAINER_NAME = "myapp"
     }
 
@@ -28,7 +28,6 @@ pipeline {
             }
         }
 
-
         stage('Docker Build') {
             steps {
                 sh '''
@@ -37,8 +36,6 @@ pipeline {
                 '''
             }
         }
-
-        
 
         stage('Push to ECR') {
             steps {
@@ -70,49 +67,46 @@ pipeline {
 
                 sshagent(['ec2-ssh-key']) {
 
-                    sh '''
+                    sh """
                         ssh -o StrictHostKeyChecking=no \
-                            $EC2_USER@$EC2_HOST << EOF
+                            $EC2_USER@$EC2_HOST << 'EOF'
 
-                        set -e
+echo "Logging into ECR..."
 
-                        echo "Logging into ECR..."
+aws ecr get-login-password \
+    --region $AWS_REGION | \
+docker login \
+    --username AWS \
+    --password-stdin $ECR_REGISTRY
 
-                        aws ecr get-login-password \
-                            --region $AWS_REGION | \
-                        docker login \
-                            --username AWS \
-                            --password-stdin $ECR_REGISTRY
+echo "Pulling new Docker image..."
 
-                        echo "Pulling new Docker image..."
+docker pull \
+    $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
 
-                        docker pull \
-                            $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+echo "Stopping old container..."
 
-                        echo "Stopping old container..."
+docker stop $CONTAINER_NAME || true
 
-                        docker stop $CONTAINER_NAME || true
+echo "Removing old container..."
 
-                        echo "Removing old container..."
+docker rm $CONTAINER_NAME || true
 
-                        docker rm $CONTAINER_NAME || true
+echo "Starting new container..."
 
-                        echo "Starting new container..."
+docker run -d \
+    --name $CONTAINER_NAME \
+    -p 8080:8080 \
+    $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
 
-                        docker run -d \
-                            --name $CONTAINER_NAME \
-                            -p 8080:8080 \
-                            --restart unless-stopped \
-                            $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+echo "Deployment successful."
 
-                        echo "Deployment successful."
+echo "Running containers:"
 
-                        echo "Running containers:"
+docker ps
 
-                        docker ps
-
-                        EOF
-                    '''
+EOF
+                    """
                 }
             }
         }
