@@ -1,85 +1,145 @@
 pipeline {
+
     agent any
 
     environment {
-        AWS_REGION = "ap-south-1"
+        AWS_REGION    = "ap-south-1"
+        ECR_REGISTRY  = "12345678.dkr.ecr.ap-south-1.amazonaws.com"
+        IMAGE_NAME    = "myapp"
+        IMAGE_TAG     = "${BUILD_NUMBER}"
 
-        APP_NAME = "myapp"
-
-        ECR_REGISTRY = "742710068961.dkr.ecr.ap-south-1.amazonaws.com"
-        ECR_REPO = "${ECR_REGISTRY}/helm/${APP_NAME}"
-
-        IMAGE_TAG = "${BUILD_NUMBER}"
-
-        KUBE_NAMESPACE = "helm-deployment"
-        RELEASE_NAME = "first"
+        EC2_USER      = "ec2-user"
+        EC2_HOST      = "YOUR_EC2_PUBLIC_IP"
+        CONTAINER_NAME = "myapp"
     }
 
     stages {
 
-        stage('Clone Git Repo') {
+        stage('Checkout') {
             steps {
-                git 'https://github.com/Ravichandu-git/docker-sample-java-webapp.git'
+                git branch: 'main',
+                    url: 'https://github.com/your-user/your-repository.git'
             }
         }
 
-        stage('Build Java App') {
+        stage('Build') {
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh 'mvn clean package'
             }
         }
 
-        stage('Build Docker Image') {
+
+        stage('Docker Build') {
             steps {
-                sh """
-                docker build -t ${ECR_REPO}:${IMAGE_TAG} .
-                docker tag ${ECR_REPO}:${IMAGE_TAG} ${ECR_REPO}:latest
-                """
+                sh '''
+                    docker build \
+                        -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
             }
         }
 
-        stage('Login to ECR') {
+        
+
+        stage('Push to ECR') {
             steps {
-                sh """
-                aws ecr get-login-password --region ${AWS_REGION} | \
-                docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                """
+                sh '''
+                    echo "Logging into ECR..."
+
+                    aws ecr get-login-password \
+                        --region $AWS_REGION | \
+                    docker login \
+                        --username AWS \
+                        --password-stdin $ECR_REGISTRY
+
+                    echo "Tagging image..."
+
+                    docker tag \
+                        $IMAGE_NAME:$IMAGE_TAG \
+                        $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+                    echo "Pushing image..."
+
+                    docker push \
+                        $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                '''
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Deploy Docker Container to EC2') {
             steps {
-                sh """
-                docker push ${ECR_REPO}:${IMAGE_TAG}
-                docker push ${ECR_REPO}:latest
-                """
+
+                sshagent(['ec2-ssh-key']) {
+
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no \
+                            $EC2_USER@$EC2_HOST << EOF
+
+                        set -e
+
+                        echo "Logging into ECR..."
+
+                        aws ecr get-login-password \
+                            --region $AWS_REGION | \
+                        docker login \
+                            --username AWS \
+                            --password-stdin $ECR_REGISTRY
+
+                        echo "Pulling new Docker image..."
+
+                        docker pull \
+                            $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+                        echo "Stopping old container..."
+
+                        docker stop $CONTAINER_NAME || true
+
+                        echo "Removing old container..."
+
+                        docker rm $CONTAINER_NAME || true
+
+                        echo "Starting new container..."
+
+                        docker run -d \
+                            --name $CONTAINER_NAME \
+                            -p 8080:8080 \
+                            --restart unless-stopped \
+                            $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+
+                        echo "Deployment successful."
+
+                        echo "Running containers:"
+
+                        docker ps
+
+                        EOF
+                    '''
+                }
             }
         }
 
-        stage('Deploy to EKS using Helm') {
+        stage('Verify Deployment') {
             steps {
-                sh """
-                helm upgrade --install ${RELEASE_NAME} ./mychart \
-                    --namespace ${KUBE_NAMESPACE} \
-                    --create-namespace \
-                    --set image.repository=${ECR_REPO} \
-                    --set image.tag=${IMAGE_TAG}
-                """
+
+                sshagent(['ec2-ssh-key']) {
+
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no \
+                            $EC2_USER@$EC2_HOST \
+                            "docker ps --filter name=$CONTAINER_NAME"
+                    '''
+                }
             }
         }
     }
 
     post {
+
         success {
-            echo "Deployment successful: ${APP_NAME}:${IMAGE_TAG}"
+            echo 'Application deployed successfully to EC2!'
         }
 
         failure {
-            echo "Deployment failed"
-        }
-
-        always {
-            cleanWs()
+            echo 'Pipeline failed!'
         }
     }
 }
