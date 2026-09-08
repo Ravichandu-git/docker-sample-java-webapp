@@ -71,6 +71,17 @@ pipeline {
             }
         }
 
+       stage('Manual Approval') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input(
+                        message: "Deploy ${IMAGE_NAME}:${IMAGE_TAG} to EC2?",
+                        ok: "Deploy"
+                    )
+                }
+            }
+        }
+        
         stage('Deploy Docker Container to EC2') {
             steps {
 
