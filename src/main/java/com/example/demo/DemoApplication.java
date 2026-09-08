@@ -60,7 +60,7 @@ public class DemoApplication {
                 borderColor = "#004d40"; // Darker teal border
             } else {
                 title = "Default Mode";
-                message = "Hello from the DEFAULT World!";
+                message = "Hello Ravi chandu from the DEFAULT World!";
                 bodyBackgroundColor = "#fff3e0"; // Light orange background
                 messageColor = "#ef6c00"; // Orange text
                 borderColor = "#e65100"; // Darker orange border
